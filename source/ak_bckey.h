@@ -59,6 +59,8 @@
  int ak_bckey_context_create_magma( ak_bckey );
 /*! \brief Инициализация контекста секретного ключа алгоритма блочного шифрования Кузнечик. */
  int ak_bckey_context_create_kuznechik( ak_bckey );
+/*! \brief Инициализация контекста секретного ключа алгоритма блочного шифрования SM4. */
+ int ak_bckey_context_create_sm4( ak_bckey );
 /*! \brief Инициализация контекста секретного ключа алгоритма блочного шифрования по его OID. */
  int ak_bckey_context_create_oid( ak_bckey , ak_oid );
 
@@ -113,6 +115,8 @@
  bool_t ak_bckey_test_magma( void );
 /*! \brief Тестирование корректной работы алгоритма блочного шифрования Кузнечик (ГОСТ Р 34.12-2015). */
  bool_t ak_bckey_test_kuznechik( void );
+/*! \brief Тестирование корректной работы алгоритма блочного шифрования SM4 */
+ bool_t ak_bckey_test_sm4( void );
 /*! \brief Тестирование корректной работы режима блочного шифрования с одновременной
     выработкой имитовставки. */
  bool_t ak_bckey_test_mgm( void );

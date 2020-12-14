@@ -40,6 +40,7 @@
 
  static const char *on_kuznechik[] =        { "kuznechik", "kuznyechik", "grasshopper", NULL };
  static const char *on_magma[] =            { "magma", NULL };
+ static const char *on_sm4[] =              { "sm4", NULL };
 
  static const char *on_sign256[] =          { "id-tc26-signwithdigest-gost3410-12-256",
                                               "sign256", NULL };
@@ -65,7 +66,7 @@
  static const char *on_w512_pst[] =         { "id-tc26-gost-3410-2012-512-paramSetTest", NULL };
  static const char *on_w512_psa[] =         { "id-tc26-gost-3410-2012-512-paramSetA", NULL };
  static const char *on_w512_psb[] =         { "id-tc26-gost-3410-2012-512-paramSetB", NULL };
- static const char *on_w512_psc[] =         { "id-tc26-gost-3410-2012-512-paramSetC", NULL }; 
+ static const char *on_w512_psc[] =         { "id-tc26-gost-3410-2012-512-paramSetC", NULL };
  static const char *on_w256_axel[] =        { "id-axel-gost-3410-2012-256-paramSetN0",
                                               "axel-n0", NULL };
 #ifdef LIBAKRYPT_CRYPTO_FUNCTIONS
@@ -196,7 +197,10 @@
               { sizeof( struct bckey ), ( ak_function_void *) ak_bckey_context_create_kuznechik,
                                                  ( ak_function_void *) ak_bckey_context_destroy,
                                                   ( ak_function_void *) ak_bckey_context_delete }},
-
+   { block_cipher, algorithm, on_sm4, "1.2.643.7.1.1.5.3", NULL,
+              { sizeof( struct bckey ), ( ak_function_void *) ak_bckey_context_create_sm4,
+                                                 ( ak_function_void *) ak_bckey_context_destroy,
+                                                  ( ak_function_void *) ak_bckey_context_delete }},
   /* 11. алгоритмы выработки и проверки электронной подписи */
    { sign_function, algorithm, on_sign256, "1.2.643.7.1.1.3.2", NULL,
         { sizeof( struct signkey ), ( ak_function_void *) ak_signkey_context_create_streebog256,

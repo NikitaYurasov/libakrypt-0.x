@@ -103,6 +103,7 @@ if( LIBAKRYPT_CRYPTO_FUNCTIONS )
                     source/ak_hmac.c
                     source/ak_bckey.c
                     source/ak_kuznechik.c
+                    source/ak_sm4.c
                     source/ak_magma.c
                     source/ak_asn1.c
                     source/ak_asn1_keys.c

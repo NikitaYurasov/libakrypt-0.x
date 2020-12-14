@@ -227,3 +227,218 @@ static void ak_sm4_decrypt(ak_skey skey, ak_pointer in, ak_pointer out) {
     WordToHexArray(B1, (ak_uint8 *) out + 8);
     WordToHexArray(B0, (ak_uint8 *) out + 12);
 }
+
+/*!
+ * \brief Функция освобождает память, занимаемую развернутыми ключами алгоритма SM4.
+ * \param skey Указатель на контекст секретного ключа, содержащего
+ * развернутые раундовые ключи и маски.
+ * \return Функция возвращает \ref ak_error_ok в случае успеха.
+ * В противном случае возвращается код ошибки.
+*/
+static int ak_sm4_delete_keys(ak_skey skey) {
+    int error = ak_error_ok;
+
+    /* выполняем стандартные проверки */
+    if (skey == NULL)
+        return ak_error_message(ak_error_null_pointer, __func__, "using a null pointer to secret key");
+    if (skey->data != NULL) {
+        /* теперь очистка и освобождение памяти */
+        if ((error = ak_ptr_context_wipe(skey->data, sizeof(sm4_key),
+                                         &skey->generator)) != ak_error_ok) {
+            ak_error_message(error, __func__, "incorrect wiping an internal data");
+            memset(skey->data, 0, sizeof(sm4_key));
+        }
+        free(skey->data);
+        skey->data = NULL;
+    }
+    return error;
+}
+
+static int ak_skey_context_mask_none(ak_skey skey) { return ak_error_ok; }
+
+static int ak_skey_context_unmask_none(ak_skey skey) { return ak_error_ok; }
+
+/* ----------------------------------------------------------------------------------------------- */
+/*! Функция инициализируете контекст ключа алгоритма блочного шифрования SM4
+    После инициализации устанавливаются обработчики (функции класса). Однако
+   само значение ключу не присваивается - поле `bkey->key` остается
+   неопределенным.
+    @param bkey Контекст секретного ключа алгоритма блочного шифрования.
+    @return Функция возвращает код ошибки. В случаее успеха возвращается \ref
+   ak_error_ok.         */
+/* ----------------------------------------------------------------------------------------------- */
+int ak_bckey_context_create_sm4(ak_bckey bkey) {
+    int error = ak_error_ok;
+
+    if (bkey == NULL)
+        return ak_error_message(ak_error_null_pointer, __func__,
+                                "using null pointer to block cipher key context");
+
+    /* создаем ключ алгоритма шифрования и определяем его методы */
+    if ((error = ak_bckey_context_create(bkey, 16, 16)) != ak_error_ok)
+        return ak_error_message(error, __func__,
+                                "wrong initalization of block cipher key context");
+
+    /* устанавливаем OID алгоритма шифрования */
+    if ((bkey->key.oid = ak_oid_context_find_by_name("sm4")) == NULL) {
+        error = ak_error_get_value();
+        ak_error_message(error, __func__,
+                         "wrong search of predefined sm4 block cipher OID");
+        ak_bckey_context_destroy(bkey);
+        return error;
+    }
+
+    /* ресурс ключа устанавливается в момент присвоения ключа */
+
+    /* устанавливаем методы */
+    bkey->key.set_mask = ak_skey_context_mask_none;
+    bkey->key.unmask = ak_skey_context_unmask_none;
+    bkey->delete_keys = ak_sm4_delete_keys;
+    bkey->encrypt = ak_sm4_encrypt;
+    bkey->decrypt = ak_sm4_decrypt;
+    return error;
+}
+
+/* ----------------------------------------------------------------------------------------------- */
+bool_t ak_bckey_test_sm4(void) {
+    int audit = ak_log_get_level();
+    /* значение секретного ключа */
+    ak_uint8 key[16] = {0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8,
+                        0xf7, 0xf6, 0xf5, 0xf4, 0xf3, 0xf2, 0xf1, 0xf0};
+
+    /* открытый текст */
+    ak_uint8 in[16] = {0x59, 0x0a, 0x13, 0x3c, 0x6b, 0xf0, 0xde, 0x92,
+                       0x20, 0x9d, 0x18, 0xf8, 0x04, 0xc7, 0x54, 0xdb};
+
+    ak_uint8 outecb[16] = {0xea, 0x39, 0x55, 0xe0, 0x3c, 0x94, 0x7d, 0x8d,
+                           0xd1, 0xd5, 0xf9, 0x1d, 0xa9, 0xf3, 0x53, 0x5e};
+
+    ak_uint8 outctr[16] = {0xb6, 0x0d, 0x0c, 0x05, 0x3f, 0x0c, 0x42, 0xe0,
+                           0x05, 0xd1, 0xb4, 0x41, 0x60, 0xdb, 0x04, 0x47};
+
+    ak_uint8 outcbc[16] = {0xf0, 0x21, 0xc4, 0x61, 0xde, 0x04, 0x7a, 0xa2,
+                           0x10, 0xce, 0xb8, 0x2c, 0xc9, 0xa2, 0x34, 0x7c};
+
+    ak_uint8 ivctr[8] = {0xf0, 0xce, 0xab, 0x90, 0x78, 0x56, 0x34, 0x12};
+    ak_uint8 ivcbc[16] = {0x12, 0x01, 0xf0, 0xe5, 0xd4, 0xc3, 0xb2, 0xa1,
+                          0xf0, 0xce, 0xab, 0x90, 0x78, 0x56, 0x34, 0x12};
+
+    struct bckey bkey;
+    ak_uint8 myout[16];
+    bool_t result = ak_true;
+    int error = ak_error_ok;
+
+    /* 1. Создаем контекст ключа алгоритма SM4 и устанавливаем значение ключа */
+    if ((error = ak_bckey_context_create_sm4(&bkey)) != ak_error_ok) {
+        ak_error_message(error, __func__,
+                         "incorrect initialization of sm4 secret key context");
+        return ak_false;
+    }
+    if ((error = ak_bckey_context_set_key(&bkey, key, sizeof(key))) !=
+        ak_error_ok) {
+        ak_error_message(error, __func__, "wrong creation of test key");
+        result = ak_false;
+        goto exit;
+    }
+
+    /* 2. Проверяем независимую обработку блоков - режим простой замены согласно SM4 */
+    if ((error = ak_bckey_context_encrypt_ecb(&bkey, in, myout, sizeof(in))) !=
+        ak_error_ok) {
+        ak_error_message(error, __func__, "wrong ecb mode encryption");
+        result = ak_false;
+        goto exit;
+    }
+    if (!ak_ptr_is_equal_with_log(myout, outecb, sizeof(outecb))) {
+        ak_error_message(ak_error_not_equal_data, __func__,
+                         "the ecb mode encryption test from SM4 is wrong");
+        result = ak_false;
+        goto exit;
+    }
+
+    if ((error = ak_bckey_context_decrypt_ecb(&bkey, outecb, myout,
+                                              sizeof(outecb))) != ak_error_ok) {
+        ak_error_message(error, __func__, "wrong ecb mode decryption");
+        result = ak_false;
+        goto exit;
+    }
+    if (!ak_ptr_is_equal_with_log(myout, in, sizeof(in))) {
+        ak_error_message(ak_error_not_equal_data, __func__,
+                         "the ecb mode decryption test from SM4 is wrong");
+        result = ak_false;
+        goto exit;
+    }
+    if (audit >= ak_log_maximum)
+        ak_error_message(ak_error_ok, __func__,
+                         "the ecb mode encryption/decryption test from SM4 is Ok");
+
+    /* 3. Проверяем режим гаммирования согласно SM4 */
+    if ((error = ak_bckey_context_ctr(&bkey, in, myout, sizeof(in), ivctr,
+                                      sizeof(ivctr))) != ak_error_ok) {
+        ak_error_message(error, __func__, "wrong counter mode encryption");
+        result = ak_false;
+        goto exit;
+    }
+    if (!ak_ptr_is_equal_with_log(myout, outctr, sizeof(outctr))) {
+        ak_error_message(ak_error_not_equal_data, __func__,
+                         "the counter mode encryption test from SM4 is wrong");
+        result = ak_false;
+        goto exit;
+    }
+
+    if ((error = ak_bckey_context_ctr(&bkey, myout, myout, sizeof(outctr), ivctr,
+                                      sizeof(ivctr))) != ak_error_ok) {
+        ak_error_message(error, __func__, "wrong ecb mode decryption");
+        result = ak_false;
+        goto exit;
+    }
+    if (!ak_ptr_is_equal_with_log(myout, in, sizeof(in))) {
+        ak_error_message(ak_error_not_equal_data, __func__,
+                         "the counter mode decryption test from SM4 is wrong");
+        result = ak_false;
+        goto exit;
+    }
+    if (audit >= ak_log_maximum)
+        ak_error_message(
+                ak_error_ok, __func__,
+                "the counter mode encryption/decryption test from SM4 is Ok");
+
+    /* 4. Проверяем режим простой замены c зацеплением согласно SM4 */
+    if ((error = ak_bckey_context_encrypt_cbc(&bkey, in, myout, sizeof(in), ivcbc,
+                                              sizeof(ivcbc))) != ak_error_ok) {
+        ak_error_message(error, __func__, "wrong cbc mode encryption");
+        result = ak_false;
+        goto exit;
+    }
+    if (!ak_ptr_is_equal_with_log(myout, outcbc, sizeof(outcbc))) {
+        ak_error_message(ak_error_not_equal_data, __func__,
+                         "the cbc mode encryption test from SM4 is wrong");
+        result = ak_false;
+        goto exit;
+    }
+    if ((error =
+                 ak_bckey_context_decrypt_cbc(&bkey, outcbc, myout, sizeof(outcbc),
+                                              ivcbc, sizeof(ivcbc))) != ak_error_ok) {
+        ak_error_message(error, __func__, "wrong cbc mode encryption");
+        result = ak_false;
+        goto exit;
+    }
+    if (!ak_ptr_is_equal_with_log(myout, in, sizeof(in))) {
+        ak_error_message(ak_error_not_equal_data, __func__,
+                         "the cbc mode encryption test from SM4 is wrong");
+        result = ak_false;
+        goto exit;
+    }
+    if (audit >= ak_log_maximum)
+        ak_error_message(ak_error_ok, __func__,
+                         "the cbc mode encryption/decryption test from SM4 is Ok");
+
+    /* освобождаем ключ и выходим */
+    exit:
+    if ((error = ak_bckey_context_destroy(&bkey)) != ak_error_ok) {
+        ak_error_message(error, __func__, "wrong destroying of secret key");
+        return ak_false;
+    }
+
+    return result;
+}
+
