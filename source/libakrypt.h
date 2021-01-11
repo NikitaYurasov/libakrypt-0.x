@@ -39,7 +39,7 @@ extern "C" {
 #define LIBAKRYPT_HAVE_STRING_H
 #define LIBAKRYPT_HAVE_STRINGS_H
 #define LIBAKRYPT_HAVE_CTYPE_H
-/* #undef LIBAKRYPT_HAVE_ENDIAN_H */
+#define LIBAKRYPT_HAVE_ENDIAN_H
 /* #undef LIBAKRYPT_HAVE_SYSENDIAN_H */
 #define LIBAKRYPT_HAVE_TIME_H
 #define LIBAKRYPT_HAVE_SYSTIME_H
@@ -63,7 +63,7 @@ extern "C" {
 #define LIBAKRYPT_HAVE_LOCALE_H
 #define LIBAKRYPT_HAVE_SIGNAL_H
 #define LIBAKRYPT_HAVE_GETOPT_H
-#define LIBAKRYPT_HAVE_LIBINTL_H
+/* #undef LIBAKRYPT_HAVE_LIBINTL_H */
 
 /* ----------------------------------------------------------------------------------------------- */
 #ifdef LIBAKRYPT_HAVE_SYSTYPES_H

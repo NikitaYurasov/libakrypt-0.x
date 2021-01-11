@@ -302,29 +302,60 @@ int ak_bckey_context_create_sm4(ak_bckey bkey) {
 /* ----------------------------------------------------------------------------------------------- */
 bool_t ak_bckey_test_sm4(void) {
     int audit = ak_log_get_level();
+
     /* значение секретного ключа */
-    ak_uint8 key[16] = {0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8,
-                        0xf7, 0xf6, 0xf5, 0xf4, 0xf3, 0xf2, 0xf1, 0xf0};
+    ak_uint8 key[16] = {0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF,
+                        0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10};
 
-    /* открытый текст */
-    ak_uint8 in[16] = {0x59, 0x0a, 0x13, 0x3c, 0x6b, 0xf0, 0xde, 0x92,
-                       0x20, 0x9d, 0x18, 0xf8, 0x04, 0xc7, 0x54, 0xdb};
+    /* открытый текст для режимов ECB, CBC, OFB, CFB */
+    ak_uint8 in[32] = {0xAA, 0xAA, 0xAA, 0xAA, 0xBB, 0xBB, 0xBB, 0xBB,
+                       0xCC, 0xCC, 0xCC, 0xCC, 0xDD, 0xDD, 0xDD, 0xDD,
+                       0xEE, 0xEE, 0xEE, 0xEE, 0xFF, 0xFF, 0xFF, 0xFF,
+                       0xAA, 0xAA, 0xAA, 0xAA, 0xBB, 0xBB, 0xBB, 0xBB};
 
-    ak_uint8 outecb[16] = {0xea, 0x39, 0x55, 0xe0, 0x3c, 0x94, 0x7d, 0x8d,
-                           0xd1, 0xd5, 0xf9, 0x1d, 0xa9, 0xf3, 0x53, 0x5e};
+    /* зашифрованный текст <in> режимом ECB */
+    ak_uint8 outecb[32] = {0x5E, 0xC8, 0x14, 0x3D, 0xE5, 0x09, 0xCF, 0xF7,
+                           0xB5, 0x17, 0x9F, 0x8F, 0x47, 0x4B, 0x86, 0x19,
+                           0x2F, 0x1D, 0x30, 0x5A, 0x7F, 0xB1, 0x7D, 0xF9,
+                           0x85, 0xF8, 0x1C, 0x84, 0x82, 0x19, 0x23, 0x04};
 
-    ak_uint8 outctr[16] = {0xb6, 0x0d, 0x0c, 0x05, 0x3f, 0x0c, 0x42, 0xe0,
-                           0x05, 0xd1, 0xb4, 0x41, 0x60, 0xdb, 0x04, 0x47};
+    /* вектор инициализации для режима CBC */
+    ak_uint8 ivcbc[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+                          0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F};
 
-    ak_uint8 outcbc[16] = {0xf0, 0x21, 0xc4, 0x61, 0xde, 0x04, 0x7a, 0xa2,
-                           0x10, 0xce, 0xb8, 0x2c, 0xc9, 0xa2, 0x34, 0x7c};
+    /* зашифрованный тест <in> режимом CBC */
+    ak_uint8 outcbc[32] = {0x78, 0xEB, 0xB1, 0x1C, 0xC4, 0x0B, 0x0A, 0x48,
+                           0x31, 0x2A, 0xAE, 0xB2, 0x04, 0x02, 0x44, 0xCB,
+                           0x4C, 0xB7, 0x01, 0x69, 0x51, 0x90, 0x92, 0x26,
+                           0x97, 0x9B, 0x0D, 0x15, 0xDC, 0x6A, 0x8F, 0x6D};
 
-    ak_uint8 ivctr[8] = {0xf0, 0xce, 0xab, 0x90, 0x78, 0x56, 0x34, 0x12};
-    ak_uint8 ivcbc[16] = {0x12, 0x01, 0xf0, 0xe5, 0xd4, 0xc3, 0xb2, 0xa1,
-                          0xf0, 0xce, 0xab, 0x90, 0x78, 0x56, 0x34, 0x12};
+    /* открытый текст для режима CTR */
+    ak_uint8 inctr[64] = {0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,
+                          0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB,
+                          0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC,
+                          0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD,
+                          0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE,
+                          0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+                          0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,
+                          0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB};
+
+    /* вектор инициализации для режима CTR*/
+    ak_uint8 ivctr[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+                          0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F};
+
+    /* зашифрованный текст режимом CTR */
+    ak_uint8 outctr[64] = {0xAC, 0x32, 0x36, 0xCB, 0x97, 0x0C, 0xC2, 0x07,
+                           0x91, 0x36, 0x4C, 0x39, 0x5A, 0x13, 0x42, 0xD1,
+                           0xA3, 0xCB, 0xC1, 0x87, 0x8C, 0x6F, 0x30, 0xCD,
+                           0x07, 0x4C, 0xCE, 0x38, 0x5C, 0xDD, 0x70, 0xC7,
+                           0xF2, 0x34, 0xBC, 0x0E, 0x24, 0xC1, 0x19, 0x80,
+                           0xFD, 0x12, 0x86, 0x31, 0x0C, 0xE3, 0x7B, 0x92,
+                           0x6E, 0x02, 0xFC, 0xD0, 0xFA, 0xA0, 0xBA, 0xF3,
+                           0x8B, 0x29, 0x33, 0x85, 0x1D, 0x82, 0x45, 0x14};
+
 
     struct bckey bkey;
-    ak_uint8 myout[16];
+    ak_uint8 myout[256];
     bool_t result = ak_true;
     int error = ak_error_ok;
 
@@ -341,7 +372,7 @@ bool_t ak_bckey_test_sm4(void) {
         goto exit;
     }
 
-    /* 2. Проверяем независимую обработку блоков - режим простой замены согласно SM4 */
+    /* 2. Проверяем независимую обработку блоков - режим ECB */
     if ((error = ak_bckey_context_encrypt_ecb(&bkey, in, myout, sizeof(in))) !=
         ak_error_ok) {
         ak_error_message(error, __func__, "wrong ecb mode encryption");
@@ -371,41 +402,10 @@ bool_t ak_bckey_test_sm4(void) {
         ak_error_message(ak_error_ok, __func__,
                          "the ecb mode encryption/decryption test from SM4 is Ok");
 
-    /* 3. Проверяем режим гаммирования согласно SM4 */
-    if ((error = ak_bckey_context_ctr(&bkey, in, myout, sizeof(in), ivctr,
-                                      sizeof(ivctr))) != ak_error_ok) {
-        ak_error_message(error, __func__, "wrong counter mode encryption");
-        result = ak_false;
-        goto exit;
-    }
-    if (!ak_ptr_is_equal_with_log(myout, outctr, sizeof(outctr))) {
-        ak_error_message(ak_error_not_equal_data, __func__,
-                         "the counter mode encryption test from SM4 is wrong");
-        result = ak_false;
-        goto exit;
-    }
-
-    if ((error = ak_bckey_context_ctr(&bkey, myout, myout, sizeof(outctr), ivctr,
-                                      sizeof(ivctr))) != ak_error_ok) {
-        ak_error_message(error, __func__, "wrong ecb mode decryption");
-        result = ak_false;
-        goto exit;
-    }
-    if (!ak_ptr_is_equal_with_log(myout, in, sizeof(in))) {
-        ak_error_message(ak_error_not_equal_data, __func__,
-                         "the counter mode decryption test from SM4 is wrong");
-        result = ak_false;
-        goto exit;
-    }
-    if (audit >= ak_log_maximum)
-        ak_error_message(
-                ak_error_ok, __func__,
-                "the counter mode encryption/decryption test from SM4 is Ok");
-
-    /* 4. Проверяем режим простой замены c зацеплением согласно SM4 */
-    if ((error = ak_bckey_context_encrypt_cbc(&bkey, in, myout, sizeof(in), ivcbc,
-                                              sizeof(ivcbc))) != ak_error_ok) {
-        ak_error_message(error, __func__, "wrong cbc mode encryption");
+    /* 3. Проверяем независимую обработку блоков - режим CBC */
+    if ((error = ak_bckey_context_encrypt_cbc(&bkey, in, myout, sizeof(in), ivcbc, sizeof(ivcbc))) !=
+        ak_error_ok) {
+        ak_error_message(error, __func__, "wrong ccb mode encryption");
         result = ak_false;
         goto exit;
     }
@@ -415,22 +415,54 @@ bool_t ak_bckey_test_sm4(void) {
         result = ak_false;
         goto exit;
     }
-    if ((error =
-                 ak_bckey_context_decrypt_cbc(&bkey, outcbc, myout, sizeof(outcbc),
-                                              ivcbc, sizeof(ivcbc))) != ak_error_ok) {
-        ak_error_message(error, __func__, "wrong cbc mode encryption");
+
+    if ((error = ak_bckey_context_decrypt_cbc(&bkey, outcbc, myout,
+                                              sizeof(outcbc), ivcbc, sizeof(ivcbc))) != ak_error_ok) {
+        ak_error_message(error, __func__, "wrong cbc mode decryption");
         result = ak_false;
         goto exit;
     }
     if (!ak_ptr_is_equal_with_log(myout, in, sizeof(in))) {
         ak_error_message(ak_error_not_equal_data, __func__,
-                         "the cbc mode encryption test from SM4 is wrong");
+                         "the ecb mode decryption test from SM4 is wrong");
         result = ak_false;
         goto exit;
     }
     if (audit >= ak_log_maximum)
         ak_error_message(ak_error_ok, __func__,
-                         "the cbc mode encryption/decryption test from SM4 is Ok");
+                         "the ecb mode encryption/decryption test from SM4 is Ok");
+
+    /* 4. Проверяем независимую обработку блоков - режим CTR */
+//    ak_uint8 my_ctr_out[256];
+
+    if ((error = ak_bckey_context_ctr(&bkey, inctr, myout, sizeof(inctr), ivctr, sizeof(ivctr))) !=
+        ak_error_ok) {
+        ak_error_message(error, __func__, "wrong ctr mode encryption");
+        result = ak_false;
+        goto exit;
+    }
+    if (!ak_ptr_is_equal_with_log(myout, outctr, sizeof(outctr))) {
+        ak_error_message(ak_error_not_equal_data, __func__,
+                         "the ctr mode encryption test from SM4 is wrong");
+        result = ak_false;
+        goto exit;
+    }
+
+    if ((error = ak_bckey_context_ctr(&bkey, outctr, myout,
+                                              sizeof(outctr), ivctr, sizeof(ivctr))) != ak_error_ok) {
+        ak_error_message(error, __func__, "wrong ctr mode decryption");
+        result = ak_false;
+        goto exit;
+    }
+    if (!ak_ptr_is_equal_with_log(myout, inctr, sizeof(inctr))) {
+        ak_error_message(ak_error_not_equal_data, __func__,
+                         "the ctr mode decryption test from SM4 is wrong");
+        result = ak_false;
+        goto exit;
+    }
+    if (audit >= ak_log_maximum)
+        ak_error_message(ak_error_ok, __func__,
+                         "the ctr mode encryption/decryption test from SM4 is Ok");
 
     /* освобождаем ключ и выходим */
     exit:
