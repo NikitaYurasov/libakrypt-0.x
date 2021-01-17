@@ -132,6 +132,15 @@ static void WordToHexArray(ak_uint32 v, ak_uint8 *b) {
     b[3] = (ak_uint8) (v);
 }
 
+static void xor(ak_const_pointer arr1, ak_const_pointer arr2, ak_pointer out, size_t size){
+    const ak_uint8 *left = arr1;
+    const ak_uint8 *right = arr2;
+    ak_uint8 *myout = out;
+    for (int i=0; i< size; ++i){
+        myout[i] = left[i] ^ right[i];
+    }
+}
+
 static ak_uint32 sm4_T(ak_uint32 X) {
     ak_uint32 t = 0;
 
@@ -330,13 +339,7 @@ bool_t ak_bckey_test_sm4(void) {
                            0x97, 0x9B, 0x0D, 0x15, 0xDC, 0x6A, 0x8F, 0x6D};
 
     /* открытый текст для режима CTR */
-    ak_uint8 inctr[64] = {0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,
-                          0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB,
-                          0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC,
-                          0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD,
-                          0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE,
-                          0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-                          0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,
+    ak_uint8 inctr[16] = {0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,
                           0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB};
 
     /* вектор инициализации для режима CTR*/
@@ -344,14 +347,8 @@ bool_t ak_bckey_test_sm4(void) {
                           0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F};
 
     /* зашифрованный текст режимом CTR */
-    ak_uint8 outctr[64] = {0xAC, 0x32, 0x36, 0xCB, 0x97, 0x0C, 0xC2, 0x07,
-                           0x91, 0x36, 0x4C, 0x39, 0x5A, 0x13, 0x42, 0xD1,
-                           0xA3, 0xCB, 0xC1, 0x87, 0x8C, 0x6F, 0x30, 0xCD,
-                           0x07, 0x4C, 0xCE, 0x38, 0x5C, 0xDD, 0x70, 0xC7,
-                           0xF2, 0x34, 0xBC, 0x0E, 0x24, 0xC1, 0x19, 0x80,
-                           0xFD, 0x12, 0x86, 0x31, 0x0C, 0xE3, 0x7B, 0x92,
-                           0x6E, 0x02, 0xFC, 0xD0, 0xFA, 0xA0, 0xBA, 0xF3,
-                           0x8B, 0x29, 0x33, 0x85, 0x1D, 0x82, 0x45, 0x14};
+    ak_uint8 outctr[16] = {0xAC, 0x32, 0x36, 0xCB, 0x97, 0x0C, 0xC2, 0x07,
+                           0x91, 0x36, 0x4C, 0x39, 0x5A, 0x13, 0x42, 0xD1};
 
 
     struct bckey bkey;
@@ -433,33 +430,34 @@ bool_t ak_bckey_test_sm4(void) {
                          "the ecb mode encryption/decryption test from SM4 is Ok");
 
     /* 4. Проверяем независимую обработку блоков - режим CTR */
-//    ak_uint8 my_ctr_out[256];
 
-    if ((error = ak_bckey_context_ctr(&bkey, inctr, myout, sizeof(inctr), ivctr, sizeof(ivctr))) !=
+    if ((error = ak_bckey_context_encrypt_ecb(&bkey, ivctr, myout, sizeof(ivctr))) !=
         ak_error_ok) {
-        ak_error_message(error, __func__, "wrong ctr mode encryption");
+        ak_error_message(error, __func__, "wrong ecb mode encryption");
         result = ak_false;
         goto exit;
     }
+    xor(myout, inctr, myout, sizeof(myout));
     if (!ak_ptr_is_equal_with_log(myout, outctr, sizeof(outctr))) {
         ak_error_message(ak_error_not_equal_data, __func__,
                          "the ctr mode encryption test from SM4 is wrong");
         result = ak_false;
         goto exit;
     }
-
-    if ((error = ak_bckey_context_ctr(&bkey, outctr, myout,
-                                              sizeof(outctr), ivctr, sizeof(ivctr))) != ak_error_ok) {
-        ak_error_message(error, __func__, "wrong ctr mode decryption");
+    if ((error = ak_bckey_context_encrypt_ecb(&bkey, ivctr, myout, sizeof(ivctr))) !=
+        ak_error_ok) {
+        ak_error_message(error, __func__, "wrong ecb mode encryption");
         result = ak_false;
         goto exit;
     }
+    xor(myout, outctr, myout, sizeof(myout));
     if (!ak_ptr_is_equal_with_log(myout, inctr, sizeof(inctr))) {
         ak_error_message(ak_error_not_equal_data, __func__,
                          "the ctr mode decryption test from SM4 is wrong");
         result = ak_false;
         goto exit;
     }
+
     if (audit >= ak_log_maximum)
         ak_error_message(ak_error_ok, __func__,
                          "the ctr mode encryption/decryption test from SM4 is Ok");
